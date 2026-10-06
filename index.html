@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASVIN — Source Extractor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--border:#242424;--text:#f5f5f5}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  min-height:100vh;
+  background:radial-gradient(ellipse 80% 50% at 50% -10%, #1c1c1c 0%, #0a0a0a 40%, #050505 75%), #050505;
+  color:var(--text);font-family:Inter,system-ui,sans-serif;font-weight:300;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  opacity:.5;
+}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+.container{width:min(1080px,92%);margin:auto;padding:64px 0 60px;position:relative;z-index:2}
+.brand{text-align:center;margin-bottom:56px;animation:fadeUp .9s cubic-bezier(.2,.8,.2,1) both}
+.brand-title{
+  font-family:"Bodoni Moda",serif;font-size:clamp(60px,13vw,124px);
+  font-weight:400;letter-spacing:-6px;line-height:.86;
+  text-shadow:0 0 60px rgba(255,255,255,.07);user-select:none;
+  background:linear-gradient(180deg,#fff 0%,#c8c8c8 55%,#8a8a8a 100%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+.brand-title span{display:inline-block;position:relative}
+.brand-title span::after{
+  content:"";position:absolute;width:7px;height:7px;border-radius:50%;
+  background:#fff;top:14px;right:6px;box-shadow:0 0 14px rgba(255,255,255,.55);
+  animation:pulse 3s ease-in-out infinite;
+}
+.brand-subtitle{margin-top:26px;font-size:9px;letter-spacing:6px;color:#6a6a6a;text-transform:uppercase;font-weight:400}
+.section-label{font-size:9px;letter-spacing:3.5px;color:#6e6e6e;text-transform:uppercase;margin-bottom:12px;font-weight:500}
+.url-box{
+  display:flex;background:rgba(12,12,12,.85);border:1px solid var(--border);
+  border-radius:2px;transition:border-color .3s ease, box-shadow .3s ease, transform .3s ease;
+  box-shadow:0 14px 50px rgba(0,0,0,.22);backdrop-filter:blur(10px);overflow:hidden;
+}
+.url-box:focus-within{
+  border-color:#4a4a4a;box-shadow:0 0 0 1px #2a2a2a, 0 22px 60px rgba(0,0,0,.32);
+  transform:translateY(-1px);
+}
+.url-box input{
+  flex:1;min-width:0;border:0;outline:0;background:transparent;color:#eee;
+  padding:19px 22px;font-size:13px;letter-spacing:.2px;
+}
+.url-box input::placeholder{color:#4e4e4e}
+.extract-btn{
+  border:0;border-left:1px solid var(--border);
+  background:linear-gradient(180deg,#f2f2f2,#dcdcdc);color:#080808;
+  padding:0 34px;font-size:9px;letter-spacing:2.5px;text-transform:uppercase;font-weight:500;
+  transition:transform .18s ease, background .25s ease, letter-spacing .25s ease;
+  position:relative;overflow:hidden;
+}
+.extract-btn::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.7) 50%,transparent 70%);
+  transform:translateX(-100%);transition:transform .6s ease;
+}
+.extract-btn:hover{background:linear-gradient(180deg,#fff,#eaeaea);letter-spacing:3px}
+.extract-btn:hover::after{transform:translateX(100%)}
+.extract-btn:active{transform:scale(.98)}
+.extract-btn:disabled{opacity:.55;cursor:wait;letter-spacing:2px}
+.status{min-height:20px;margin-top:12px;color:#777;font-size:11px;letter-spacing:.3px}
+.workspace{
+  margin-top:32px;border:1px solid var(--border);
+  background:linear-gradient(180deg,#0a0a0a,#080808);border-radius:2px;
+  box-shadow:0 22px 70px rgba(0,0,0,.28);overflow:hidden;
+  animation:fadeUp 1s .15s cubic-bezier(.2,.8,.2,1) both;
+}
+.tabs{display:flex;border-bottom:1px solid var(--border);overflow:auto;scrollbar-width:none;background:#0b0b0b}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  border:0;border-right:1px solid var(--border);background:transparent;color:#666;
+  padding:17px 24px;font-size:9px;letter-spacing:2.2px;text-transform:uppercase;
+  white-space:nowrap;font-weight:500;transition:background .22s ease, color .22s ease;
+  position:relative;
+}
+.tab::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:2px;
+  background:linear-gradient(90deg,#fff,#a0a0a0);transform:scaleX(0);
+  transform-origin:center;transition:transform .3s cubic-bezier(.2,.8,.2,1);
+}
+.tab:hover{color:#c0c0c0;background:#101010}
+.tab.active{color:#fff;background:#151515}
+.tab.active::after{transform:scaleX(1)}
+.editor-wrap{background:#060606;position:relative}
+textarea{
+  display:block;width:100%;height:520px;resize:vertical;border:0;outline:0;
+  background:#060606;color:#cfcfcf;padding:26px;
+  font-family:"JetBrains Mono","Courier New",monospace;font-size:12px;line-height:1.75;
+  letter-spacing:.1px;tab-size:2;
+}
+textarea::selection{background:#3a3a3a;color:#fff}
+textarea::-webkit-scrollbar{width:10px;height:10px}
+textarea::-webkit-scrollbar-track{background:#0a0a0a}
+textarea::-webkit-scrollbar-thumb{background:#282828;border:2px solid #0a0a0a;border-radius:6px}
+textarea::-webkit-scrollbar-thumb:hover{background:#383838}
+.actions{
+  display:flex;justify-content:space-between;align-items:center;
+  border-top:1px solid var(--border);padding:13px;background:#0b0b0b;
+}
+.action-group{display:flex;gap:7px}
+.action-btn{
+  border:1px solid transparent;background:transparent;color:#777;
+  padding:11px 16px;font-size:9px;letter-spacing:1.8px;text-transform:uppercase;
+  font-weight:500;transition:.22s ease;border-radius:2px;
+}
+.action-btn:hover{color:#fff;border-color:#333;background:#131313;transform:translateY(-1px)}
+.action-btn.primary{background:linear-gradient(180deg,#f0f0f0,#dadada);color:#080808}
+.action-btn.primary:hover{background:linear-gradient(180deg,#fff,#e8e8e8)}
+.footer{text-align:center;margin-top:48px;color:#3a3a3a;font-size:8px;letter-spacing:4px;text-transform:uppercase}
+.toast-wrap{position:fixed;right:22px;bottom:22px;z-index:1000;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+.toast{
+  width:min(340px,calc(100vw - 44px));padding:16px 18px;
+  background:rgba(16,16,16,.94);border:1px solid #2e2e2e;border-left:2px solid #d0d0d0;
+  color:#eee;border-radius:2px;box-shadow:0 22px 60px rgba(0,0,0,.5);
+  backdrop-filter:blur(16px);transform:translateY(18px);opacity:0;
+  animation:toastIn .35s cubic-bezier(.2,.8,.2,1) forwards;
+}
+.toast.hide{animation:toastOut .3s ease forwards}
+.toast-title{font-size:9px;letter-spacing:2.2px;text-transform:uppercase;margin-bottom:6px;font-weight:500;color:#fff}
+.toast-text{font-size:11px;color:#8a8a8a;line-height:1.55}
+@keyframes toastIn{to{transform:translateY(0);opacity:1}}
+@keyframes toastOut{to{transform:translateY(12px);opacity:0}}
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(10px);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  opacity:0;visibility:hidden;transition:.28s ease;z-index:900;
+}
+.modal-backdrop.show{opacity:1;visibility:visible}
+.modal{
+  width:min(470px,100%);background:linear-gradient(180deg,#111,#0c0c0c);
+  border:1px solid #2e2e2e;border-radius:3px;box-shadow:0 40px 120px rgba(0,0,0,.7);
+  transform:translateY(14px) scale(.97);transition:.32s cubic-bezier(.2,.8,.2,1);overflow:hidden;
+}
+.modal-backdrop.show .modal{transform:translateY(0) scale(1)}
+.modal-head{padding:26px 26px 16px;border-bottom:1px solid #222}
+.modal-kicker{font-size:8px;letter-spacing:3.5px;color:#777;text-transform:uppercase;font-weight:500}
+.modal-title{font-family:"Bodoni Moda",serif;font-size:30px;margin-top:8px;letter-spacing:-.5px}
+.modal-body{padding:22px 26px;color:#949494;font-size:12px;line-height:1.75}
+.modal-foot{padding:14px 26px 22px;display:flex;justify-content:flex-end;gap:9px}
+.modal-btn{
+  border:1px solid #2e2e2e;background:#151515;color:#aaa;padding:11px 17px;
+  font-size:9px;letter-spacing:1.8px;text-transform:uppercase;font-weight:500;
+  border-radius:2px;transition:.22s ease;
+}
+.modal-btn:hover{background:#1c1c1c;color:#fff;border-color:#3a3a3a}
+.modal-btn.primary{background:#eee;color:#080808;border-color:#eee}
+.modal-btn.primary:hover{background:#fff}
+.loading{
+  display:inline-block;width:10px;height:10px;border:1.5px solid #444;
+  border-top-color:#eee;border-radius:50%;animation:spin .7s linear infinite;
+  margin-right:8px;vertical-align:-1px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.85)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:650px){
+  .container{width:90%;padding-top:44px;padding-bottom:44px}
+  .brand{margin-bottom:42px}.brand-title{letter-spacing:-3px}
+  .url-box{flex-direction:column}
+  .url-box input{padding:17px 18px}
+  .extract-btn{border-left:0;border-top:1px solid var(--border);padding:17px}
+  textarea{height:440px;font-size:11px;padding:20px}
+  .actions{flex-direction:column;align-items:stretch;gap:7px}
+  .action-group{width:100%}.action-btn{flex:1;text-align:center}
+  .toast-wrap{right:14px;bottom:14px}
+  .tab{padding:15px 18px;letter-spacing:1.8px}
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+  <header class="brand">
+    <h1 class="brand-title">ASV<span>I</span>N</h1>
+    <p class="brand-subtitle">Web Source Extraction · Pro</p>
+  </header>
+
+  <section>
+    <div class="section-label">Source Address</div>
+    <div class="url-box">
+      <input id="urlInput" type="url" placeholder="https://example.com" autocomplete="off" spellcheck="false">
+      <button class="extract-btn" id="extractBtn">Extract</button>
+    </div>
+    <div class="status" id="status">Ready</div>
+  </section>
+
+  <section class="workspace">
+    <nav class="tabs">
+      <button class="tab active" data-type="html">HTML</button>
+      <button class="tab" data-type="css">CSS</button>
+      <button class="tab" data-type="js">JavaScript</button>
+      <button class="tab" data-type="combined">Combined</button>
+    </nav>
+    <div class="editor-wrap">
+      <textarea id="output" spellcheck="false" placeholder="Source will appear here..."></textarea>
+    </div>
+    <div class="actions">
+      <div class="action-group">
+        <button class="action-btn" id="copyBtn">Copy</button>
+        <button class="action-btn" id="clearBtn">Clear</button>
+      </div>
+      <div class="action-group">
+        <button class="action-btn primary" id="downloadBtn">Download</button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">ASVIN Source Extractor · Puppeteer Edition</footer>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-kicker">ASVIN</div>
+      <div class="modal-title" id="modalTitle">Notice</div>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot">
+      <button class="modal-btn" id="modalClose">Close</button>
+      <button class="modal-btn primary" id="modalAction" style="display:none">Continue</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const urlInput=$("urlInput"), extractBtn=$("extractBtn"), output=$("output");
+const statusBox=$("status"), copyBtn=$("copyBtn"), downloadBtn=$("downloadBtn");
+const clearBtn=$("clearBtn"), toastWrap=$("toastWrap"), modalBackdrop=$("modalBackdrop");
+const modalTitle=$("modalTitle"), modalBody=$("modalBody"), modalClose=$("modalClose"), modalAction=$("modalAction");
+
+let sourceData={html:"",css:"",js:"",combined:""};
+let currentType="html";
+
+function toast(title,text){
+  const el=document.createElement("div");
+  el.className="toast";
+  el.innerHTML=`<div class="toast-title">${escapeHTML(title)}</div>
+                <div class="toast-text">${escapeHTML(text)}</div>`;
+  toastWrap.appendChild(el);
+  setTimeout(()=>{el.classList.add("hide");setTimeout(()=>el.remove(),320);},3200);
+}
+function showModal(title,body,actionText="",action=null){
+  modalTitle.textContent=title; modalBody.textContent=body;
+  modalAction.style.display=actionText?"inline-block":"none";
+  modalAction.textContent=actionText;
+  modalAction.onclick=()=>{if(action)action();closeModal();};
+  modalBackdrop.classList.add("show");
+}
+function closeModal(){modalBackdrop.classList.remove("show")}
+modalClose.onclick=closeModal;
+modalBackdrop.addEventListener("click",e=>{if(e.target===modalBackdrop)closeModal()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal()});
+
+function escapeHTML(s){
+  return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+}
+function normalizeURL(value){
+  value=value.trim();
+  if(!value) throw new Error("URL belum dimasukkan.");
+  if(!/^https?:\/\//i.test(value)) value="https://"+value;
+  return new URL(value).href;
+}
+function setStatus(text,loading=false){
+  statusBox.innerHTML = loading
+    ? `<span class="loading"></span>${escapeHTML(text)}`
+    : escapeHTML(text);
+}
+
+function buildCombined(){
+  const doc=new DOMParser().parseFromString(sourceData.html,"text/html");
+  doc.querySelectorAll('link[rel="stylesheet"],style,script').forEach(el=>el.remove());
+  if(sourceData.css){
+    const style=doc.createElement("style");
+    style.textContent="\n"+sourceData.css+"\n";
+    doc.head.appendChild(style);
+  }
+  if(sourceData.js){
+    const script=doc.createElement("script");
+    script.textContent="\n"+sourceData.js+"\n";
+    doc.body.appendChild(script);
+  }
+  return "<!DOCTYPE html>\n"+doc.documentElement.outerHTML;
+}
+
+async function extract(){
+  try{
+    const url=normalizeURL(urlInput.value);
+    extractBtn.disabled=true;
+    extractBtn.textContent="Working";
+
+    setStatus("Rendering halaman (Puppeteer)...",true);
+
+    const res = await fetch("/extract?url=" + encodeURIComponent(url));
+    const data = await res.json();
+
+    if(!res.ok || data.error){
+      throw new Error(data.message || data.error || "Gagal extract");
+    }
+
+    sourceData.html = data.html || "";
+    sourceData.css = data.css || "";
+    sourceData.js = data.js || "";
+    sourceData.combined = buildCombined();
+
+    output.value = sourceData.html;
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    document.querySelector('[data-type="html"]').classList.add("active");
+    currentType="html";
+
+    const title = data.meta?.title ? ` · ${data.meta.title}` : "";
+    setStatus(`Complete · ${data.meta.cssCount} CSS · ${data.meta.jsCount} JS${title}`);
+    toast("Complete","HTML, CSS, dan JS berhasil diekstrak (mode render).");
+  }catch(error){
+    setStatus("Failed: "+error.message);
+    showModal("Extraction failed", error.message || "Terjadi kesalahan.");
+  }finally{
+    extractBtn.disabled=false;
+    extractBtn.textContent="Extract";
+  }
+}
+
+document.querySelectorAll(".tab").forEach(tab=>{
+  tab.addEventListener("click",()=>{
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    tab.classList.add("active");
+    currentType=tab.dataset.type;
+    output.value=sourceData[currentType]||"";
+  });
+});
+
+copyBtn.onclick=async()=>{
+  if(!output.value){ toast("Nothing to copy","Belum ada source yang tersedia."); return; }
+  try{ await navigator.clipboard.writeText(output.value); toast("Copied","Source berhasil disalin."); }
+  catch(e){ output.select(); document.execCommand("copy"); toast("Copied","Source berhasil disalin."); }
+};
+
+downloadBtn.onclick=()=>{
+  if(!output.value){ toast("Nothing to download","Belum ada source yang tersedia."); return; }
+  let extension="txt",filename="source";
+  if(currentType==="html"){extension="html";filename="index";}
+  if(currentType==="css"){extension="css";filename="style";}
+  if(currentType==="js"){extension="js";filename="script";}
+  if(currentType==="combined"){extension="html";filename="combined";}
+  const blob=new Blob([output.value],{type:"text/plain;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download=filename+"."+extension; a.click();
+  URL.revokeObjectURL(url);
+  toast("Downloaded",filename+"."+extension+" berhasil dibuat.");
+};
+
+clearBtn.onclick=()=>{
+  if(urlInput.value||output.value){
+    showModal("Clear workspace","Semua source yang sedang ditampilkan akan dibersihkan.","Clear",()=>{
+      urlInput.value=""; output.value="";
+      sourceData={html:"",css:"",js:"",combined:""};
+      setStatus("Ready");
+      toast("Cleared","Workspace sudah dibersihkan.");
+    });
+  }
+};
+
+extractBtn.onclick=extract;
+urlInput.addEventListener("keydown",e=>{if(e.key==="Enter")extract()});
+</script>
+</body>
+</html>
